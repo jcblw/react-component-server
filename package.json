@@ -4,7 +4,7 @@
   "description": "A lib that makes serverside rendering of components easier",
   "main": "lib/index.js",
   "scripts": {
-    "test": "standard src/ && ava",
+    "test": "standard src/ && npm run compile && ava",
     "compile": "babel src --stage 0 --modules common --out-dir lib",
     "watch": "babel src --stage 0 --modules common --out-dir lib --watch",
     "prepublish": "npm run compile"
