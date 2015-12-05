@@ -4,9 +4,9 @@
   "description": "A lib that makes serverside rendering of components easier",
   "main": "lib/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "babel src --out-dir lib",
-    "watch": "babel src --out-dir lib --watch",
+    "test": "standard src/ && ava",
+    "compile": "babel src --stage 0 --modules common --out-dir lib",
+    "watch": "babel src --stage 0 --modules common --out-dir lib --watch",
     "prepublish": "npm run compile"
   },
   "repository": {
@@ -30,20 +30,8 @@
     "react-dom": "^0.14.3"
   },
   "devDependencies": {
-    "babel": "^6.1.18",
-    "babel-cli": "^6.2.0",
-    "babel-core": "^6.2.1",
-    "babel-plugin-transform-es2015-modules-commonjs": "^6.2.0",
-    "babel-preset-es2015": "^6.1.18",
-    "babel-preset-react": "^6.3.13"
-  },
-  "babel": {
-    "presets": [
-      "es2015",
-      "react"
-    ],
-    "plugins": [
-      "transform-es2015-modules-commonjs"
-    ]
+    "ava": "^0.7.0",
+    "babel": "^5.8.34",
+    "standard": "^5.4.1"
   }
 }
