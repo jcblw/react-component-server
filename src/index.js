@@ -94,7 +94,6 @@ function create (options = {}) {
       }
     }
     listen (port, callback) {
-      if (expressApp.address().port) return
       expressApp.listen(port, callback)
     }
   }
