@@ -4,7 +4,7 @@ import express from 'express'
 import fs from 'fs'
 import path from 'path'
 import {EventEmitter} from 'events'
-import {safeStringify} from 'safe-stringify'
+import {safeStringify} from './safe-stringify'
 
 function create (options = {}) {
   const expressApp = options.server || express()
@@ -12,7 +12,7 @@ function create (options = {}) {
   const doctype = options.doctype || '<!doctype html>'
   const defaults = options.defaults || {}
   const dirs = {
-    component: path.resolve(process.cwd(), options.componentDir || './components'),
+    component: path.resolve(process.cwd(), options.componentsDir || './components'),
     template: path.resolve(process.cwd(), options.templatesDir || './templates')
   }
   class ReactComponentServer extends EventEmitter {
@@ -27,9 +27,7 @@ function create (options = {}) {
     renderComponent (options, res) {
       this.isValidSetup(options, (err, requires) => {
         if (err) {
-          res
-            .status(404)
-            .send('404 not found')
+          return this.onError(err, res)
         }
         const Component = requires.component
         const template = requires.template
@@ -50,7 +48,7 @@ function create (options = {}) {
       })
       Promise.all(promises)
         .then(() => {
-          callback({
+          callback(null, {
             component: require(resolvedPaths.component),
             template: require(resolvedPaths.template)
           })
