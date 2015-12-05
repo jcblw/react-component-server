@@ -1,6 +1,6 @@
 # React Component Server
 
-https://travis-ci.org/jcblw/react-component-server.svg?branch=master
+[![Build Status](https://travis-ci.org/jcblw/react-component-server.svg?branch=master)](https://travis-ci.org/jcblw/react-component-server)
 
 A small lib that wraps express to allow for simple serving of react components.
 
