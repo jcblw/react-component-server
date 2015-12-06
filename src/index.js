@@ -1,10 +1,10 @@
 import React from 'react'
 import ReactDOMServer from 'react-dom/server'
 import express from 'express'
-import fs from 'fs'
 import path from 'path'
 import {EventEmitter} from 'events'
 import {safeStringify} from './safe-stringify'
+import {isValidSetup} from './validate'
 
 /**
  * create, this will setup this a higher level function that returns a component server
@@ -54,7 +54,7 @@ function create (options = {}) {
      * @param  {mixed} options.[param] - please see defaults for create for more details
      */
     renderComponent (options, res) {
-      this.isValidSetup(options, (err, requires) => {
+      isValidSetup(options, {defaults, dirs}, (err, requires) => {
         if (err) {
           return this.onError(err, res)
         }
@@ -65,31 +65,6 @@ function create (options = {}) {
         const html = ReactDOMServer.renderToStaticMarkup(_template)
         res.send(`${doctype}${html}`)
       })
-    }
-    /**
-     * ::isValidSetup - checks to see if options passes are valid
-     *
-     * @param {Object} _options - the same options object passed to create
-     * @param  {function} callback - a function to be called once validation is done passes node style (err, results)
-     */
-    isValidSetup (_options, callback) {
-      // this can be alot stricter
-      const options = Object.assign({}, _options, defaults)
-      const resolvedPaths = {}
-      const promises = ['component', 'template'].map((key) => {
-        const _path = path.resolve(dirs[key], options[key])
-        resolvedPaths[key] = _path
-        return this.isValidRequire(_path)
-      })
-      Promise.all(promises)
-        .then(() => {
-          callback(null, {
-            component: require(resolvedPaths.component),
-            template: require(resolvedPaths.template)
-          })
-        }, (err) => {
-          callback(err)
-        })
     }
     /**
      * ::onError - is a method that simplifys error handling inside of components, with show errors on dev, and hide them on prod. Also looks to see if there is a error event binding
@@ -108,22 +83,6 @@ function create (options = {}) {
       }
       console.error(`Unhandled 'error' event`)
       throw err
-    }
-    /**
-     * ::isValidRequire - a method that will check to see if path is currently there before requiring
-     *
-     * @param {string} _path - a path to check stat
-     * @returns {Promise} promise - a new promise object that resolves if valid
-     */
-    isValidRequire (_path) {
-      return new Promise((resolve, reject) => {
-        fs.stat(_path, (err) => {
-          if (err) {
-            return reject(err)
-          }
-          resolve()
-        })
-      })
     }
     /**
      * ::handleRoute - handles the express route and sets up options for renderComponent
