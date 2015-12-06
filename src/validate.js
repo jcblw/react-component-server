@@ -37,13 +37,15 @@ function isValidSetup (_options, {dirs, defaults}, callback) {
   const promises = ['component', 'template'].map((key) => {
     const _path = path.resolve(dirs[key], options[key])
     resolvedPaths[key] = _path
-    return this.isValidRequire(_path)
+    return isValidRequire(_path)
   })
   Promise.all(promises)
     .then(() => {
       callback(null, {
         component: require(resolvedPaths.component),
-        template: require(resolvedPaths.template)
+        componentPath: resolvedPaths.component,
+        template: require(resolvedPaths.template),
+        templatePath: resolvedPaths.template
       })
     }, (err) => {
       callback(err)

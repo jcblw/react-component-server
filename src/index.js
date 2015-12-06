@@ -1,7 +1,9 @@
 import React from 'react'
 import ReactDOMServer from 'react-dom/server'
+import browserify from 'browserify'
 import express from 'express'
 import path from 'path'
+import fs from 'fs'
 import {EventEmitter} from 'events'
 import {safeStringify} from './safe-stringify'
 import {isValidSetup} from './validate'
@@ -25,6 +27,9 @@ function create (options = {}) {
   const errorMessage = options.errorMessage || 'An error happened'
   const doctype = options.doctype || '<!doctype html>'
   const defaults = options.defaults || {}
+  const bundleDir = options.bundleDir || '/js'
+  const bundleExpose = options.bundleExpose || 'app'
+  const cacheDir = options.cacheDir || './temp'
   const dirs = {
     component: path.resolve(process.cwd(), options.componentsDir || './components'),
     template: path.resolve(process.cwd(), options.templatesDir || './templates')
@@ -59,12 +64,66 @@ function create (options = {}) {
           return this.onError(err, res)
         }
         const Component = requires.component
-        const template = requires.template
+        const {template, componentPath} = requires
         const {props, meta} = options
-        const _template = template(ReactDOMServer.renderToString(<Component {...props} />), {props, meta})
-        const html = ReactDOMServer.renderToStaticMarkup(_template)
-        res.send(`${doctype}${html}`)
+        const _meta = Object.assign({}, meta, this.getBundleMeta({componentPath}))
+        console.log('bundling')
+        this.bundleJS(componentPath, {
+          expose: _meta.bundleExpose,
+          bundlePath: _meta.bundlePath,
+          cachePath: cacheDir
+        }, () => {
+          console.log('bundle done')
+          const _template = template(ReactDOMServer.renderToString(<Component {...props} />), {props, meta: _meta})
+          const html = ReactDOMServer.renderToStaticMarkup(_template)
+          res.send(`${doctype}${html}`)
+          this.get(_meta.bundlePath, this.handleBundleRoute(cacheFile)) // add a route
+        })
       })
+    }
+    getBundleMeta ({componentPath}) {
+      const _fileName = componentPath.split('/').pop()
+      const fileName = _fileName.match(/\.js$/) ? _fileName : `${_fileName}.js`
+      const bundlePath = bundleDir.match(/\/$/) ? bundleDir : `${bundleDir}/`
+      return {
+        bundlePath: `${bundlePath}${fileName}`,
+        bundleExpose: bundleExpose
+      }
+    }
+    bundleJS (componentPath, {expose, cachePath, bundlePath}, callback) {
+      console.log('in bundleJS')
+      const bundle = browserify()
+      const fileName = bundlePath.split('/').pop()
+      const cacheFile = `${cachePath}/${fileName}`
+      const _componentBase = componentPath.split('/')
+      _componentBase.pop()
+      const basedir = _componentBase.join('/')
+      // const rs = fs.createReadStream(componentPath)
+      const ws = fs.createWriteStream(cacheFile)
+      console.log('start actual bundle')
+      bundle.require(componentPath, {expose, basedir})
+      bundle
+        .bundle((err, buf) => {
+          console.log('bundle callback')
+          if (err) {
+            this.onError(err)
+            callback(err)
+            return console.log(err)
+          }
+          ws.write(buf)
+          ws.end()
+          callback()
+        })
+    }
+    handleBundleRoute (cacheFile) {
+      return (req, res) => {
+        const rs = fs.createReadStream(cacheFile)
+        rs
+          .on('error', (err) => {
+            this.onError(err, res)
+          })
+          .pipe(res)
+      }
     }
     /**
      * ::onError - is a method that simplifys error handling inside of components, with show errors on dev, and hide them on prod. Also looks to see if there is a error event binding
