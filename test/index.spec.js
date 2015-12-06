@@ -24,5 +24,20 @@ test('the create methods returns an object, and has current api', t => {
 })
 
 test('the componentServer::get method should add a route to a express server', t => {
-  t.pass()
+  const componentServer = create({server: {get: function (url, handler) {
+    t.is(url, 'foo')
+    t.is(typeof handler, 'function')
+    t.pass()
+  }}})
+  componentServer.get('foo')
+})
+
+test('the componentServer::isValidRequire method should return a promise', t => {
+  const componentServer = create({server: {}})
+  const foo = componentServer.isValidRequire('')
+  t.is(typeof foo.then, 'function')
+  foo.then(() => {}, (err) => {
+    t.is(typeof err, 'object')
+    t.pass()
+  })
 })
