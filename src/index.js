@@ -68,10 +68,12 @@ function create (options = {}) {
         const {props, meta} = options
         const _meta = Object.assign({}, meta, this.getBundleMeta({componentPath}))
         const _props = props || {}
-        this.registerBundle(componentPath, {
-          expose: _meta.bundleExpose,
-          bundlePath: _meta.bundlePath
-        })
+        if (options.bundle) {
+          this.registerBundle(componentPath, {
+            expose: _meta.bundleExpose,
+            bundlePath: _meta.bundlePath
+          })
+        }
         const _template = template(ReactDOMServer.renderToString(<Component {..._props} />), {props: _props, meta: _meta})
         const html = ReactDOMServer.renderToStaticMarkup(_template)
         callback(null, `${doctype}${html}`, requires, _meta)
