@@ -110,9 +110,9 @@ function create (options = {}) {
      */
     registerBundle (componentPath, {expose, cachePath, bundlePath}) {
       if (this._bundlePathsRegistered[bundlePath]) return
-      console.log(`register bundle ${bundlePath}`)
       this._bundlePathsRegistered[bundlePath] = true
       this.get(bundlePath, (req, res) => {
+        // need to implement cache
         const bundle = browserify()
         // expose react and react dom
         bundle.require('react', {expose: 'react'})
