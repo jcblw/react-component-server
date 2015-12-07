@@ -3,7 +3,6 @@ import ReactDOMServer from 'react-dom/server'
 import browserify from 'browserify'
 import express from 'express'
 import path from 'path'
-import fs from 'fs'
 import {EventEmitter} from 'events'
 import {safeStringify} from './safe-stringify'
 import {isValidSetup} from './validate'
@@ -41,6 +40,7 @@ function create (options = {}) {
     constructor () {
       super()
       this.expressApp = expressApp // expose this
+      this._bundlePathsRegistered = {}
     }
     /**
      * ::get The only METHOD of express proxied
@@ -54,27 +54,45 @@ function create (options = {}) {
     /**
      * ::renderComponent - takes inputed options validate and then renders out components and places in template sends back to request
      *
-     * @param  {object} options - an object that holds the config for the request
-     * @param  {mixed} options.[param] - please see defaults for create for more details
+     * @param {object} options - an object that holds the config for the request
+     * @param {mixed} options.[param] - please see defaults for create for more details
+     * @param {function} callback - a callback that will return (err, html, requires, meta)
      */
-    renderComponent (options, res) {
+    renderComponent (options, callback) {
       isValidSetup(options, {defaults, dirs}, (err, requires) => {
         if (err) {
-          return this.onError(err, res)
+          return callback(err)
         }
         const Component = requires.component
         const {template, componentPath} = requires
         const {props, meta} = options
         const _meta = Object.assign({}, meta, this.getBundleMeta({componentPath}))
+        const _props = props || {}
         this.registerBundle(componentPath, {
           expose: _meta.bundleExpose,
           bundlePath: _meta.bundlePath
         })
-        const _template = template(ReactDOMServer.renderToString(<Component {...props} />), {props, meta: _meta})
+        const _template = template(ReactDOMServer.renderToString(<Component {..._props} />), {props: _props, meta: _meta})
         const html = ReactDOMServer.renderToStaticMarkup(_template)
-        res.send(`${doctype}${html}`)
+        callback(null, `${doctype}${html}`, requires, _meta)
       })
     }
+    /**
+     * ::getHTML - will get the html from the component first checks for cache but the will just render component
+     *
+     * @param {object} options - config for this component
+     * @param {function} callback - a callback function that will return (err, html)
+     */
+    getHTML (options, callback) {
+      // right now this is just a proxy to renderComponent
+      this.renderComponent(options, callback)
+    }
+    /**
+     * ::getBundleMeta - will grab some meta data about the file that is to be bundled
+     *
+     * @param {object} options - some of the options
+     * @returns {object} bundleMeta - some data about what will be exposed and where the bundle can be fetched from
+     */
     getBundleMeta ({componentPath}) {
       const _fileName = componentPath.split('/').pop()
       const fileName = _fileName.match(/\.js$/) ? _fileName : `${_fileName}.js`
@@ -84,7 +102,16 @@ function create (options = {}) {
         bundleExpose: bundleExpose
       }
     }
+    /**
+     * ::registerBundle - will register a bundle with the router to bundle on request
+     *
+     * @param {string} componentPath - path to the component
+     * @param {object} bundleMeta - some data about what will be exposed and where the bundle can be fetched from
+     */
     registerBundle (componentPath, {expose, cachePath, bundlePath}) {
+      if (this._bundlePathsRegistered[bundlePath]) return
+      console.log(`register bundle ${bundlePath}`)
+      this._bundlePathsRegistered[bundlePath] = true
       this.get(bundlePath, (req, res) => {
         const bundle = browserify()
         // expose react and react dom
@@ -126,12 +153,19 @@ function create (options = {}) {
         options = {}
       }
       return (req, res) => {
-        if (typeof handler === undefined) {
-          return this.renderComponent(options, res)
+        if (typeof handler !== 'function') {
+          return this.getHTML(options, componentRendered)
         }
         handler(req, res, (_opts = {}) => {
-          this.renderComponent(_opts, res)
+          this.getHTML(_opts, componentRendered)
         })
+
+        function componentRendered (err, html, requires, meta) {
+          if (err) {
+            return this.onError(err, res)
+          }
+          res.send(html)
+        }
       }
     }
     /**

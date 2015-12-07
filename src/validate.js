@@ -32,7 +32,7 @@ function isValidRequire (_path) {
  */
 function isValidSetup (_options, {dirs, defaults}, callback) {
   // this can be alot stricter
-  const options = Object.assign({}, _options, defaults)
+  const options = Object.assign({}, defaults, _options)
   const resolvedPaths = {}
   const promises = ['component', 'template'].map((key) => {
     const _path = path.resolve(dirs[key], options[key])
