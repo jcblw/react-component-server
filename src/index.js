@@ -63,8 +63,7 @@ function create (options = {}) {
         if (err) {
           return callback(err)
         }
-        const Component = requires.component
-        const {template, componentPath} = requires
+        const {template, componentPath, component: Component} = requires
         const {props, meta} = options
         const _meta = Object.assign({}, meta, this.getBundleMeta({componentPath}))
         const _props = props || {}
@@ -87,7 +86,9 @@ function create (options = {}) {
      */
     getHTML (options, callback) {
       // right now this is just a proxy to renderComponent
-      this.renderComponent(options, callback)
+      this.renderComponent(options, (...args) => {
+        callback(...args)
+      })
     }
     /**
      * ::getBundleMeta - will grab some meta data about the file that is to be bundled
@@ -132,12 +133,12 @@ function create (options = {}) {
      */
     onError (err, res) {
       if (this.listeners('error').length) {
-        if (res) {
-          res
-            .status(500)
-            .send(`<h3>${process.env !== 'production' ? `${err.message}<br>${err.stack}` : errorMessage}</h3>`)
-        }
-        return this.emit('error', err)
+        return this.emit('error', err, res)
+      }
+      if (res) {
+        res
+          .status(500)
+          .send(`<h3>${process.env !== 'production' ? `${err.message}<br>${err.stack}` : errorMessage}</h3>`)
       }
       console.error(`Unhandled 'error' event`)
       throw err
@@ -155,6 +156,12 @@ function create (options = {}) {
         options = {}
       }
       return (req, res) => {
+        const componentRendered = (err, html, requires, meta) => {
+          if (err) {
+            return this.onError(err, res)
+          }
+          res.send(html)
+        }
         if (typeof handler !== 'function') {
           return this.getHTML(options, componentRendered)
         }
@@ -162,12 +169,6 @@ function create (options = {}) {
           this.getHTML(_opts, componentRendered)
         })
 
-        function componentRendered (err, html, requires, meta) {
-          if (err) {
-            return this.onError(err, res)
-          }
-          res.send(html)
-        }
       }
     }
     /**

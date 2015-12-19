@@ -5,7 +5,13 @@
  * @returns {string} stringifiedObj - the stringified object
  */
 function safeStringify (obj) {
-  return JSON.stringify(obj).replace(/<\/script/g, '<\\/script').replace(/<!--/g, '<\\!--')
+  let json
+  try {
+    json = JSON.stringify(obj).replace(/<\/script/g, '<\\/script').replace(/<!--/g, '<\\!--')
+  } catch (e) {
+    json = { error: e.message }
+  }
+  return json
 }
 
 export {safeStringify}

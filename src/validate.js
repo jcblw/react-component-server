@@ -41,10 +41,18 @@ function isValidSetup (_options, {dirs, defaults}, callback) {
   })
   Promise.all(promises)
     .then(() => {
+      const component = require(resolvedPaths.component)
+      const template = require(resolvedPaths.template)
+      if (!isComponentValid(component)) {
+        return callback(new TypeError(`${resolvedPaths.component} is not a valid React component`))
+      }
+      if (!isTemplateValid(template)) {
+        return callback(new TypeError(`${resolvedPaths.template} is not a valid template`))
+      }
       callback(null, {
-        component: require(resolvedPaths.component),
+        component,
         componentPath: resolvedPaths.component,
-        template: require(resolvedPaths.template),
+        template,
         templatePath: resolvedPaths.template
       })
     }, (err) => {
@@ -59,8 +67,19 @@ function isValidSetup (_options, {dirs, defaults}, callback) {
  * @returns {Boolean} isComponent - true or false is is valid component
  */
 
- function componentIsValid (Component) {
-   return TestUtils.isElement(Component)
- }
+function isComponentValid (Component) {
+  return typeof Component === 'function' // this can get more detailed
+}
 
-export {isValidRequire, isValidSetup, componentIsValid}
+/**
+ * isTemplateValid is a function to test to see if the required template is valid
+ *
+ * @param {Function} template - a valid or invalid template function
+ * @returns {Boolean} isValidTemplate - true if the template is valid false if it is not.
+ */
+
+function isTemplateValid (template) {
+  return typeof template === 'function'
+}
+
+export {isValidRequire, isValidSetup, isComponentValid, isTemplateValid}
