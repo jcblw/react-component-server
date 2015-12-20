@@ -1,6 +1,6 @@
 {
   "name": "react-component-server",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A lib that makes serverside rendering of components easier",
   "main": "lib/index.js",
   "scripts": {
