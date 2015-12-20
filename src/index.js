@@ -23,7 +23,6 @@ import {isValidSetup} from './validate'
 
 function create (options = {}) {
   const expressApp = options.server || express()
-  const errorMessage = options.errorMessage || 'An error happened'
   const doctype = options.doctype || '<!doctype html>'
   const defaults = options.defaults || {}
   const bundleDir = options.bundleDir || '/js'
@@ -121,7 +120,10 @@ function create (options = {}) {
         bundle.require('react', {expose: 'react'})
         bundle.require('react-dom', {expose: 'react-dom'})
         bundle.require(componentPath, {expose})
-        bundle.bundle()
+
+        bundle
+          .bundle()
+          .on('error', (e) => this.onError(e, res))
           .pipe(res)
       })
     }
@@ -134,11 +136,6 @@ function create (options = {}) {
     onError (err, res) {
       if (this.listeners('error').length) {
         return this.emit('error', err, res)
-      }
-      if (res) {
-        res
-          .status(500)
-          .send(`<h3>${process.env !== 'production' ? `${err.message}<br>${err.stack}` : errorMessage}</h3>`)
       }
       console.error(`Unhandled 'error' event`)
       throw err
@@ -168,7 +165,6 @@ function create (options = {}) {
         handler(req, res, (_opts = {}) => {
           this.getHTML(_opts, componentRendered)
         })
-
       }
     }
     /**

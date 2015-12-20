@@ -1,7 +1,10 @@
 'use strict'
 
+// monkey patch babel
+import 'babel-core/register'
+
 import test from 'ava'
-import {isValidRequire} from '../lib/validate'
+import {isValidRequire} from '../src/validate'
 
 test('the isValidRequire method should return a promise', t => {
   const foo = isValidRequire('')

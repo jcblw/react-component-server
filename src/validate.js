@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import TestUtils from 'react-addons-test-utils'
 
 /**
  * isValidRequire - a method that will check to see if path is currently there before requiring
@@ -35,7 +34,7 @@ function isValidSetup (_options, {dirs, defaults}, callback) {
   const options = Object.assign({}, defaults, _options)
   const resolvedPaths = {}
   const promises = ['component', 'template'].map((key) => {
-    const _path = path.resolve(dirs[key], options[key])
+    const _path = path.resolve(dirs[key] || '', options[key] || '')
     resolvedPaths[key] = _path
     return isValidRequire(_path)
   })
@@ -55,7 +54,8 @@ function isValidSetup (_options, {dirs, defaults}, callback) {
         template,
         templatePath: resolvedPaths.template
       })
-    }, (err) => {
+    })
+    .catch((err) => {
       callback(err)
     })
 }

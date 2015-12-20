@@ -4,7 +4,7 @@
   "description": "A lib that makes serverside rendering of components easier",
   "main": "lib/index.js",
   "scripts": {
-    "test": "standard src/ && npm run compile && ava",
+    "test": "standard src/ && nyc ava",
     "compile": "babel src --stage 0 --modules common --out-dir lib",
     "watch": "babel src --stage 0 --modules common --out-dir lib --watch",
     "prepublish": "npm run compile"
@@ -28,12 +28,13 @@
     "browserify": "^12.0.1",
     "express": "^4.13.3",
     "react": "^0.14.3",
-    "react-addons-test-utils": "^0.14.3",
     "react-dom": "^0.14.3"
   },
   "devDependencies": {
     "ava": "^0.7.0",
     "babel": "^5.8.34",
-    "standard": "^5.4.1"
+    "nyc": "^5.0.1",
+    "standard": "^5.4.1",
+    "through": "^2.3.8"
   }
 }
