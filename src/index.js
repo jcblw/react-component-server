@@ -27,6 +27,7 @@ function create (options = {}) {
   const defaults = options.defaults || {}
   const bundleDir = options.bundleDir || '/js'
   const bundleExpose = options.bundleExpose || 'app'
+  const {transform, transformOptions} = options
   const dirs = {
     component: path.resolve(process.cwd(), options.componentsDir || './components'),
     template: path.resolve(process.cwd(), options.templatesDir || './templates')
@@ -116,6 +117,10 @@ function create (options = {}) {
       this.get(bundlePath, (req, res) => {
         // need to implement cache
         const bundle = browserify()
+
+        if (transform) {
+          bundle.transform(transform, transformOptions)
+        }
         // expose react and react dom
         bundle.require('react', {expose: 'react'})
         bundle.require('react-dom', {expose: 'react-dom'})
