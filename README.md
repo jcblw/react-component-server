@@ -21,7 +21,7 @@ const componentServer = ReactComponentServer.create({
 
 ```javascript
 {
-  // pass an express server instead of creating a new one
+  // pass an http server instead of creating a new one
   server: server,
   // relative path to components dir
   componentsDir: './components',
