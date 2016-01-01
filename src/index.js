@@ -1,7 +1,8 @@
 import React from 'react'
+import http from 'http'
+import HttpHashRouter from 'http-hash-router'
 import ReactDOMServer from 'react-dom/server'
 import browserify from 'browserify'
-import express from 'express'
 import path from 'path'
 import {EventEmitter} from 'events'
 import {safeStringify} from './safe-stringify'
@@ -13,7 +14,7 @@ import {isValidSetup} from './validate'
  * @param {Object} options - a set of options to configure defaults of server
  * @param {string} options.componentsDir - the relative path from process.cwd() to components directory
  * @param {string} options.templatesDir - the relative path from process.cwd() to templates directory
- * @param {string} options.[server] - a express server object
+ * @param {string} options.[server] - a http server object
  * @param {Object} options.[defaults] - default set of params for paths
  * @param {string} options.[defaults.component] - the component to use if none is passed
  * @param {string} options.[defaults.template] - the template to use if none is passed
@@ -22,7 +23,7 @@ import {isValidSetup} from './validate'
  */
 
 function create (options = {}) {
-  const expressApp = options.server || express()
+  const router = HttpHashRouter()
   const doctype = options.doctype || '<!doctype html>'
   const defaults = options.defaults || {}
   const bundleDir = options.bundleDir || '/js'
@@ -35,21 +36,37 @@ function create (options = {}) {
 
   class ReactComponentServer extends EventEmitter {
     /**
-     * ::constructor - sets up components server, initializes EventEmitter, and exposes expressApp
+     * ::constructor - sets up components server, initializes EventEmitter, and exposes server
      */
     constructor () {
       super()
-      this.expressApp = expressApp // expose this
+      this.onRequest = this.onRequest.bind(this)
+      this.server = options.server || http.createServer(this.onRequest)
+      this.router = router
       this._bundlePathsRegistered = {}
+      if (options.server) {
+        this.server.on('request', this.onRequest)
+      }
     }
     /**
-     * ::get The only METHOD of express proxied
+     * ::get proxy for router.set
      *
      * @param {string} path - the path to handle when the server get a request to it. eg. "/about"
      * @param {mixed} args - the rest of the arguments proxied to handleRoute. see for more details
      */
     get (path, ...args) {
-      expressApp.get(path, this.handleRoute(...args))
+      router.set(path, this.handleRoute(...args))
+    }
+    /**
+     * ::onRequest handles the request and passes the request to the router
+     *
+     * @param {object} req - an http request object
+     * @param {object} res - an http response object
+     */
+    onRequest (req, res) {
+      router(req, res, null, (err) => {
+        this.onError(err, res)
+      })
     }
     /**
      * ::renderComponent - takes inputed options validate and then renders out components and places in template sends back to request
@@ -86,7 +103,8 @@ function create (options = {}) {
      */
     getHTML (options, callback) {
       // right now this is just a proxy to renderComponent
-      this.renderComponent(options, (...args) => {
+      const opts = Object.assign({}, defaults, options)
+      this.renderComponent(opts, (...args) => {
         callback(...args)
       })
     }
@@ -146,7 +164,7 @@ function create (options = {}) {
       throw err
     }
     /**
-     * ::handleRoute - handles the express route and sets up options for renderComponent
+     * ::handleRoute - handles the http route and sets up options for renderComponent
      *
      * @param  {Object|Function|undefined} options - can be a number of types resolves to being an object
      * @param {function|undefined} handler - is a function to call to get/overwrite options
@@ -162,7 +180,7 @@ function create (options = {}) {
           if (err) {
             return this.onError(err, res)
           }
-          res.send(html)
+          res.end(html)
         }
         if (typeof handler !== 'function') {
           return this.getHTML(options, componentRendered)
@@ -179,7 +197,7 @@ function create (options = {}) {
      * @param {Function} [callback] - a callback to call after port is listening
      */
     listen (port, callback) {
-      expressApp.listen(port, callback)
+      this.server.listen(port, callback)
     }
   }
 
