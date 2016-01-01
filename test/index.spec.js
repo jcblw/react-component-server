@@ -8,6 +8,8 @@ import path from 'path'
 import through from 'through'
 import {create} from '../src'
 
+function noop () {}
+
 test('the create method is a function', t => {
   t.is(typeof create, 'function')
   t.pass()
@@ -25,25 +27,26 @@ test('the create methods returns an object, and has current api', t => {
   t.pass()
 })
 
-test('the componentServer::get method should add a route to a express server', t => {
-  const componentServer = create({server: {get: function (url, handler) {
-    t.is(url, 'foo')
-    t.is(typeof handler, 'function')
-    t.pass()
-  }}})
+test('the componentServer::get method should add a route to the router', t => {
+  const componentServer = create({server: {on: noop}})
   componentServer.get('foo')
+  t.is(typeof componentServer.router.hash._hash.staticPaths.foo, 'object')
+  t.pass()
 })
 
-test('the componentServer::listen method should pass port to the express server', t => {
-  const componentServer = create({server: {listen: function (port) {
-    t.is(port, 1337)
-    t.pass()
-  }}})
+test('the componentServer::listen method should pass port to the http server', t => {
+  const componentServer = create({server: {
+    listen: function (port) {
+      t.is(port, 1337)
+      t.pass()
+    },
+    on: noop
+  }})
   componentServer.listen(1337)
 })
 
 test('the componentServer::renderComponent method should call the callback with an error if an invalid configuration is passed', t => {
-  const componentServer = create({server: {}})
+  const componentServer = create({server: {on: noop}})
   componentServer.renderComponent({}, function (err) {
     t.is(typeof err, 'object')
     t.true(!!err.message.match(/ENOENT/))
@@ -53,7 +56,7 @@ test('the componentServer::renderComponent method should call the callback with 
 
 test('the componentServer::renderComponent method should generate html when a valid configuration is passed', t => {
   const componentServer = create({
-    server: {},
+    server: {on: noop},
     componentsDir: './test-components/',
     templatesDir: './test-templates/'
   })
@@ -71,17 +74,17 @@ test('the componentServer::renderComponent method should generate html when a va
 
 test('the componentServer::getHTML method should be a proxy to the ::renderComponent method', t => {
   const componentServer = create({
-    server: {},
+    server: {on: noop},
     componentsDir: './test-components/',
     templatesDir: './test-templates/'
   })
-  const _options = 'foo'
+  const _options = {foo: 'bar'}
   const done = (foo) => {
     t.is(foo, 'bar')
     t.pass()
   }
   componentServer.renderComponent = (options, callback) => {
-    t.is(options, 'foo')
+    t.is(options.foo, 'bar')
     t.is(typeof callback, 'function')
     callback('bar')
   }
@@ -90,7 +93,7 @@ test('the componentServer::getHTML method should be a proxy to the ::renderCompo
 
 test('the componentServer::getBundleMeta method should return an object with the keys bundlePath and bundleExpose', t => {
   const componentServer = create({
-    server: {},
+    server: {on: noop},
     componentsDir: './test-components/',
     templatesDir: './test-templates/'
   })
@@ -102,15 +105,10 @@ test('the componentServer::getBundleMeta method should return an object with the
 })
 
 test('the componentServer::registerBundle should register a get url with the server that points towards the bundle path', t => {
-  const componentServer = create({
-    server: { get: (url, handler) => {
-      t.is(typeof url, 'string')
-      t.ok(url.match(/foo/))
-      t.is(typeof handler, 'function')
-      t.pass()
-    }}
-  })
-  componentServer.registerBundle('', {bundlePath: 'foo'})
+  const componentServer = create({server: {on: noop}})
+  componentServer.registerBundle('', {bundlePath: 'bar'})
+  t.is(typeof componentServer.router.hash._hash.staticPaths.bar, 'object')
+  t.pass()
 })
 
 test.cb('the componentServer::registerBundle should build a bundle, with all the proper exports, when a request for the bundle path is made', t => {
@@ -132,15 +130,14 @@ test.cb('the componentServer::registerBundle should build a bundle, with all the
     t.end()
   })
   const componentServer = create({
-    server: { get: (url, handler) => {
-      // fake a request
-      handler({}, spy)
-    }}
+    server: {on: noop}
   })
   componentServer.registerBundle(path.resolve(process.cwd(), './test-components/App.js'), {
     bundlePath: 'foo',
     expose: 'qux'
   })
+  // fake req
+  componentServer.router.hash._hash.staticPaths.foo.handler({}, spy)
 })
 
 test.cb('the componentServer::registerBundle should emit an error if there is a browserify bundle error', t => {
@@ -149,14 +146,9 @@ test.cb('the componentServer::registerBundle should emit an error if there is a 
     once: function () {},
     emit: function () {},
     status: function (status) {},
-    send: function (html) {}
+    end: function (html) {}
   }
-  const componentServer = create({
-    server: { get: (url, handler) => {
-      // fake a request
-      handler({}, spyResponse)
-    }}
-  })
+  const componentServer = create({server: {on: noop}})
   componentServer.on('error', (err, res) => {
     t.is(typeof err, 'object')
     t.ok(err.message.match(/Cannot find module/))
@@ -166,28 +158,30 @@ test.cb('the componentServer::registerBundle should emit an error if there is a 
     bundlePath: 'foo',
     expose: 'qux'
   })
+  // fake req
+  componentServer.router.hash._hash.staticPaths.foo.handler({}, spyResponse)
 })
 
 test('the componentServer::onError method should throw if there is no "error" event listeners', t => {
-  const componentServer = create({server: {}})
+  const componentServer = create({server: {on: noop}})
   t.throws(() => { componentServer.onError(new Error('foo')) }, /foo/)
   t.pass()
 })
 
 test('the componentServer::onError method should not throw if there are "error" event listeners', t => {
-  const componentServer = create({server: {}})
+  const componentServer = create({server: {on: noop}})
   componentServer.on('error', err => { t.ok(err.message.match(/foo/)) })
   t.doesNotThrow(() => { componentServer.onError(new Error('foo')) })
   t.pass()
 })
 
 test('the componentServer::handleRoute method should return a function', t => {
-  const componentServer = create({server: {}})
+  const componentServer = create({server: {on: noop}})
   t.is(typeof componentServer.handleRoute(), 'function')
 })
 
 test('the componentServer::handleRoute methods returned function should emit an error if there is a bad configuration passed to the intial function', t => {
-  const componentServer = create({server: {}})
+  const componentServer = create({server: {on: noop}})
   const handle = componentServer.handleRoute()
   componentServer.on('error', err => { t.pass(err) })
   handle()
@@ -199,13 +193,13 @@ test('the componentServer::handleRoute methods returned function should send bac
     once: function () {},
     emit: function () {},
     status: function (status) {},
-    send: function (html) {
+    end: function (html) {
       t.ok(html.match(/\<\!doctype html\>/))
       t.pass()
     }
   }
   const componentServer = create({
-    server: {},
+    server: {on: noop},
     componentsDir: './test-components/',
     templatesDir: './test-templates/'
   })
@@ -222,21 +216,22 @@ test.cb('the componentServer::handleRoute methods returned function should regis
     once: function () {},
     emit: function () {},
     status: function () {},
-    send: function () {}
+    end: function () {}
   }
   const componentServer = create({
     server: {
-      get: function (url, handler) {
-        t.is(typeof url, 'string')
-        t.ok(url.match(/\/js\/App\.js/))
-        t.is(typeof handler, 'function')
-        t.pass()
-        t.end()
-      }
+      on: noop
     },
     componentsDir: './test-components/',
     templatesDir: './test-templates/'
   })
+  componentServer.router.set = function (url, handler) {
+    t.is(typeof url, 'string')
+    t.ok(url.match(/\/js\/App\.js/))
+    t.is(typeof handler, 'function')
+    t.pass()
+    t.end()
+  }
   const handle = componentServer.handleRoute({
     bundle: true,
     component: 'App.js',
@@ -251,14 +246,14 @@ test.cb('the componentServer::handleRoute methods returned function should wait 
     once: function () {},
     emit: function () {},
     status: function (status) {},
-    send: function (html) {
+    end: function (html) {
       t.ok(html.match(/\<\!doctype html\>/))
       t.pass()
       t.end()
     }
   }
   const componentServer = create({
-    server: {},
+    server: {on: noop},
     componentsDir: './test-components/',
     templatesDir: './test-templates/'
   })
