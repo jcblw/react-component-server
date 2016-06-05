@@ -42,7 +42,7 @@
     "babel-preset-es2015": "^6.3.13",
     "babel-preset-react": "^6.3.13",
     "nyc": "^5.0.1",
-    "standard": "^5.4.1",
+    "standard": "^6.0.6",
     "through": "^2.3.8"
   },
   "babel": {
